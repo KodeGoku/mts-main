@@ -1,16 +1,13 @@
-import { useEffect } from "react";
-import "./App.css";
-import { getTestResults } from "./query";
+import React from 'react';
+import TestResultTable from './TestResultTable';
 
-// import { DataGrid } from "@mui/x-data-grid";
-
-function App() {
+const App = () => {
   return (
-    <>
-      <h1>Your data table goes here. </h1>
-      <p>The MUI DataGrid component has been installed for you.</p>
-    </>
+    <div>
+      <h1>Test Results</h1>
+      <TestResultTable />
+    </div>
   );
-}
+};
 
 export default App;

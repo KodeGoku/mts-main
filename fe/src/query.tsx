@@ -1,4 +1,4 @@
-import { BACKEND_ENDPOINT } from "./constants";
+import { BACKEND_ENDPOINT } from './constants';
 
 type TestResult = {
   input_under_test: string;
@@ -10,13 +10,13 @@ type TestResult = {
 
 export async function getTestResults() {
   let requestOptions = {
-    method: "POST",
+    method: 'POST',
   };
   let response = await fetch(
     `${BACKEND_ENDPOINT}/test_results/`,
     requestOptions
   );
-  if (response.status != 200) {
+  if (response.status !== 200) {
     let text = await response.text();
     throw Error(text);
   }

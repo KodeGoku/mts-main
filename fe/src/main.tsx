@@ -1,10 +1,11 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import React from 'react';
+import ReactDOM from 'react-dom';
 import App from './App.tsx'
-import './index.css'
+import '@blueprintjs/core/lib/css/blueprint.css'; // If using BlueprintJS
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,
-)
+  document.getElementById('root')
+);
