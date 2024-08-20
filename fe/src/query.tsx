@@ -11,12 +11,17 @@ type TestResult = {
   human_feedback?: string;
 };
 
-export async function getTestResults(): Promise<TestResult[]> {
+type GetTestResultsResponse = {
+  results: TestResult[];
+  total_count: number;
+};
+
+export async function getTestResults(offset: number = 0, limit: number = 10): Promise<GetTestResultsResponse> {
   let requestOptions = {
     method: "GET",
   };
   let response = await fetch(
-    `${BACKEND_ENDPOINT}/test_results/`,
+    `${BACKEND_ENDPOINT}/test_results/?offset=${offset}&limit=${limit}`,
     requestOptions
   );
   if (response.status !== 200) {
@@ -24,7 +29,7 @@ export async function getTestResults(): Promise<TestResult[]> {
     throw new Error(text);
   }
   let response_json = await response.json();
-  return response_json as TestResult[];
+  return response_json as GetTestResultsResponse;
 }
 
 export async function getSummary(): Promise<string> {
@@ -40,7 +45,5 @@ export async function getSummary(): Promise<string> {
     throw new Error(text);
   }
   let response_json = await response.json();
-
-  // Assuming the backend returns a 'summary' field in the response JSON
   return response_json.summary as string;
 }

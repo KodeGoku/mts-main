@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getTestResults, getSummary } from './query'; // Assuming getSummary is your function to fetch the summary
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch, CircularProgress } from '@mui/material';
+import { getTestResults, getSummary } from './query';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch, CircularProgress, Pagination } from '@mui/material';
 import FeedbackForm from './FeedbackForm';
 
 type TestResult = {
@@ -8,10 +8,10 @@ type TestResult = {
   input_under_test: string;
   llm_output: string;
   criteria: string;
-  auto_eval: string;
+  auto_eval: number;
   auto_feedback: string;
-  human_eval: number | null;
-  human_feedback: string | null;
+  human_eval?: number;
+  human_feedback?: string;
 };
 
 const TestResultTable: React.FC = () => {
@@ -24,11 +24,18 @@ const TestResultTable: React.FC = () => {
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false); // New state for summary loading
   const [summary, setSummary] = useState<string | null>(null); // State for storing summary
 
+  // Pagination state
+  const [page, setPage] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const resultsPerPage = 10; // Number of results per page
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const results: TestResult[] = await getTestResults();
-        setTestResults(results);
+        const offset = (page - 1) * resultsPerPage;
+        const results = await getTestResults(offset, resultsPerPage);
+        setTestResults(results.results);
+        setTotalCount(results.total_count);
       } catch (error) {
         setError('Failed to load test results.');
       } finally {
@@ -37,7 +44,7 @@ const TestResultTable: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [page]);
 
   const handleOpenForm = (result: TestResult) => {
     setSelectedTestResult(result);
@@ -52,8 +59,10 @@ const TestResultTable: React.FC = () => {
   const handleFeedbackSubmitted = () => {
     const fetchData = async () => {
       try {
-        const results: TestResult[] = await getTestResults();
-        setTestResults(results);
+        const offset = (page - 1) * resultsPerPage;
+        const results = await getTestResults(offset, resultsPerPage);
+        setTestResults(results.results);
+        setTotalCount(results.total_count);
       } catch (error) {
         setError('Failed to load test results.');
       }
@@ -131,6 +140,12 @@ const TestResultTable: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Pagination
+        count={Math.ceil(totalCount / resultsPerPage)}
+        page={page}
+        onChange={(event, value) => setPage(value)}
+        color="primary"
+      />
       {selectedTestResult && (
         <FeedbackForm
           open={formOpen}

@@ -8,6 +8,7 @@ from sklearn.cluster import KMeans
 import logging
 from django.conf import settings
 import google.generativeai as genai
+from django.core.paginator import Paginator
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -16,10 +17,35 @@ logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def test_results(request):
-    test_results = list(TestResult.objects.all().values(
-        'id', 'input_under_test', 'llm_output', 'criteria', 'auto_eval', 'auto_feedback', 'human_eval', 'human_feedback'
-    ))
-    return JsonResponse(test_results, safe=False)
+    """
+    View to return a paginated list of test results
+    """
+    try:
+        # Get offset and limit from query parameters
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 10))
+
+        # Ensure offset and limit are non-negative
+        if offset < 0 or limit <= 0:
+            return JsonResponse({'error': 'Invalid offset or limit'}, status=400)
+
+        # Fetch the test results
+        test_results = TestResult.objects.all().values(
+            'id', 'input_under_test', 'llm_output', 'criteria', 'auto_eval', 'auto_feedback', 'human_eval', 'human_feedback'
+        )
+
+        # Apply pagination
+        paginator = Paginator(test_results, limit)
+        page_number = (offset // limit) + 1
+        page = paginator.page(page_number)
+
+        return JsonResponse({
+            'results': list(page.object_list),
+            'total_count': paginator.count,
+        }, safe=False)
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def add_feedback(request):
@@ -59,7 +85,6 @@ def summarize(request):
 
         # Filter out "N/A" values
         valid_feedbacks = [feedback for feedback in human_feedbacks if feedback and feedback.strip().lower() != "n/a"]
-
         if not valid_feedbacks:
             return JsonResponse({'summary': 'No valid human feedbacks found'}, status=200)
 
