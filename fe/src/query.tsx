@@ -7,11 +7,13 @@ type TestResult = {
   criteria: string;
   auto_eval: string;
   auto_feedback: string;
+  human_eval: number | null;
+  human_feedback: string | null;
 };
 
 export async function getTestResults(): Promise<TestResult[]> {
   let requestOptions = {
-    method: "POST",
+    method: "GET",
   };
   let response = await fetch(
     `${BACKEND_ENDPOINT}/test_results/`,

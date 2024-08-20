@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getTestResults } from './query';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch } from '@mui/material';
 import FeedbackForm from './FeedbackForm';
 
 type TestResult = {
@@ -10,6 +10,8 @@ type TestResult = {
   criteria: string;
   auto_eval: string;
   auto_feedback: string;
+  human_eval: number | null;
+  human_feedback: string | null;
 };
 
 const TestResultTable: React.FC = () => {
@@ -18,11 +20,12 @@ const TestResultTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedTestResult, setSelectedTestResult] = useState<TestResult | null>(null);
   const [formOpen, setFormOpen] = useState<boolean>(false);
+  const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const results = await getTestResults();
+        const results: TestResult[] = await getTestResults();
         setTestResults(results);
       } catch (error) {
         setError('Failed to load test results.');
@@ -45,10 +48,9 @@ const TestResultTable: React.FC = () => {
   };
 
   const handleFeedbackSubmitted = () => {
-    // Re-fetch the test results after feedback submission
     const fetchData = async () => {
       try {
-        const results = await getTestResults();
+        const results: TestResult[] = await getTestResults();
         setTestResults(results);
       } catch (error) {
         setError('Failed to load test results.');
@@ -58,11 +60,23 @@ const TestResultTable: React.FC = () => {
     fetchData();
   };
 
+  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilterEnabled(event.target.checked);
+  };
+
+  const filteredResults = filterEnabled
+    ? testResults.filter(result => result.human_eval !== parseFloat(result.auto_eval))
+    : testResults;
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
   return (
     <>
+      <FormControlLabel
+        control={<Switch checked={filterEnabled} onChange={handleFilterChange} />}
+        label="Show only mismatched evaluations"
+      />
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -72,17 +86,21 @@ const TestResultTable: React.FC = () => {
               <TableCell>Criteria</TableCell>
               <TableCell>Auto Eval</TableCell>
               <TableCell>Auto Feedback</TableCell>
+              <TableCell>Human Eval</TableCell>
+              <TableCell>Human Feedback</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {testResults.map((result) => (
+            {filteredResults.map((result) => (
               <TableRow key={result.id}>
                 <TableCell>{result.input_under_test}</TableCell>
                 <TableCell>{result.llm_output}</TableCell>
                 <TableCell>{result.criteria}</TableCell>
                 <TableCell>{result.auto_eval}</TableCell>
                 <TableCell>{result.auto_feedback}</TableCell>
+                <TableCell>{result.human_eval ?? 'N/A'}</TableCell>
+                <TableCell>{result.human_feedback || 'N/A'}</TableCell>
                 <TableCell>
                   <Button onClick={() => handleOpenForm(result)}>Add Feedback</Button>
                 </TableCell>
