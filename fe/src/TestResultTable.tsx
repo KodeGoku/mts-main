@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getTestResults } from './query';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch } from '@mui/material';
+import { getTestResults, getSummary } from './query'; // Assuming getSummary is your function to fetch the summary
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch, CircularProgress } from '@mui/material';
 import FeedbackForm from './FeedbackForm';
 
 type TestResult = {
@@ -21,6 +21,8 @@ const TestResultTable: React.FC = () => {
   const [selectedTestResult, setSelectedTestResult] = useState<TestResult | null>(null);
   const [formOpen, setFormOpen] = useState<boolean>(false);
   const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
+  const [loadingSummary, setLoadingSummary] = useState<boolean>(false); // New state for summary loading
+  const [summary, setSummary] = useState<string | null>(null); // State for storing summary
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,11 +70,31 @@ const TestResultTable: React.FC = () => {
     ? testResults.filter(result => result.human_eval !== parseFloat(result.auto_eval))
     : testResults;
 
+  const handleGetSummary = async () => {
+    setLoadingSummary(true);
+    try {
+      const summaryResponse: string = await getSummary();
+      setSummary(summaryResponse);
+    } catch (error) {
+      setError('Failed to fetch summary.');
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
   return (
     <>
+      <Button onClick={handleGetSummary} variant="contained" color="primary">
+        Get Summary
+      </Button>
+      {loadingSummary ? (
+        <CircularProgress />
+      ) : (
+        summary && <div>{summary}</div>
+      )}
       <FormControlLabel
         control={<Switch checked={filterEnabled} onChange={handleFilterChange} />}
         label="Show only mismatched evaluations"

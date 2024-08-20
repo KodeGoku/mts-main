@@ -1,14 +1,24 @@
 import json
+import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import TestResult
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+import logging
+from django.conf import settings
+import google.generativeai as genai
+
+genai.configure(api_key=settings.GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
+logger = logging.getLogger(__name__)
+
 
 @csrf_exempt
 def test_results(request):
-    """
-    View to retrieve all test results from a database via GET request
-    """
-    test_results = list(TestResult.objects.all().values())
+    test_results = list(TestResult.objects.all().values(
+        'id', 'input_under_test', 'llm_output', 'criteria', 'auto_eval', 'auto_feedback', 'human_eval', 'human_feedback'
+    ))
     return JsonResponse(test_results, safe=False)
 
 @csrf_exempt
@@ -37,3 +47,56 @@ def add_feedback(request):
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def summarize(request):
+    """
+    Endpoint to provide a summary of the most common human feedback cases
+    """
+    try:
+        # Fetch human feedback data from database
+        human_feedbacks = TestResult.objects.values_list('human_feedback', flat=True)
+
+        # Filter out "N/A" values
+        valid_feedbacks = [feedback for feedback in human_feedbacks if feedback and feedback.strip().lower() != "n/a"]
+
+        if not valid_feedbacks:
+            return JsonResponse({'summary': 'No valid human feedbacks found'}, status=200)
+
+        # Preprocess and vectorize the data
+        vectorizer = TfidfVectorizer(stop_words='english')
+        X = vectorizer.fit_transform(valid_feedbacks)
+
+        # Determine the number of clusters dynamically
+        num_clusters = min(3, len(valid_feedbacks))
+        kmeans = KMeans(n_clusters=num_clusters)
+        kmeans.fit(X)
+        clusters = kmeans.predict(X)
+
+        # Summarize using Gemini
+        summaries = []
+        for cluster in range(num_clusters):
+            cluster_feedbacks = [valid_feedbacks[i] for i in range(len(clusters)) if clusters[i] == cluster]
+
+            # Ensuring cluster_feedbacks is not empty
+            if not cluster_feedbacks:
+                continue
+
+            # Constructing the prompt for LLM
+            prompt = (
+                "Summarize the following human feedbacks into 2-3 sentences:\n\n" +
+                "\n".join(cluster_feedbacks) +
+                "\n\nProvide a concise summary of the feedbacks above, focusing on the key points and common themes."
+            )
+
+            # Query the Gemini API
+            response = model.generate_content(prompt)
+
+            summaries.append(response.text.strip())
+
+        # Returning the combined summary
+        return JsonResponse({"summary": " ".join(summaries)})
+
+    except Exception as e:
+        logger.error(f"Error in summarize view: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
