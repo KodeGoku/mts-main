@@ -16,6 +16,7 @@ import {
   TextField,
 } from '@mui/material';
 import FeedbackForm from './FeedbackForm';
+import Plot from 'react-plotly.js';
 
 type TestResult = {
   id: string;
@@ -47,7 +48,7 @@ const TestResultTable: React.FC = () => {
     const fetchData = async () => {
       try {
         const offset = (page - 1) * resultsPerPage;
-        const results = await getTestResults(offset, resultsPerPage, searchQuery);
+        const results = await getTestResults(offset, resultsPerPage, searchQuery); // Pass search query here
         setTestResults(results.results);
         setTotalCount(results.total_count);
       } catch (error) {
@@ -105,6 +106,34 @@ const TestResultTable: React.FC = () => {
     }
   };
 
+  const calculatePlotsData = () => {
+
+    const llmOutputLengths = testResults.map(result => result.llm_output.length);
+    const totalAutoEval = testResults.length;
+    const totalHumanEval = testResults.filter(result => result.human_eval !== undefined).length;
+    const passRateAutoEval = (testResults.filter(result => result.auto_eval >= 0.5).length / totalAutoEval) * 100;
+    const passRateHumanEval = (testResults.filter(result => result.human_eval !== undefined && result.human_eval >= 0.5).length / totalHumanEval) * 100;
+    
+    return {
+      histogramData: {
+        x: llmOutputLengths,
+        type: 'histogram',
+        marker: { color: 'blue' },
+        name: 'LLM Output Lengths'
+      },
+      barGraphData: [
+        {
+          x: ['Auto Eval Pass Rate', 'Human Eval Pass Rate'],
+          y: [passRateAutoEval, passRateHumanEval],
+          type: 'bar',
+          marker: { color: ['red', 'green'] },
+        }
+      ]
+    };
+  };
+
+  const { histogramData, barGraphData } = calculatePlotsData();
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
@@ -133,6 +162,24 @@ const TestResultTable: React.FC = () => {
           label="Show only mismatched evaluations"
         />
       </div>
+      <Plot
+        data={[histogramData]}
+        layout={{
+          title: 'Histogram of LLM Output Lengths',
+          xaxis: { title: 'Length' },
+          yaxis: { title: 'Frequency' },
+        }}
+        style={{ width: '100%', height: '400px' }}
+      />
+      <Plot
+        data={barGraphData}
+        layout={{
+          title: 'Pass Rates',
+          xaxis: { title: 'Evaluation Type' },
+          yaxis: { title: 'Pass Rate (%)' },
+        }}
+        style={{ width: '100%', height: '400px' }}
+      />
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
