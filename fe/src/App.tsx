@@ -1,16 +1,35 @@
-import { useEffect } from "react";
-import "./App.css";
-import { getTestResults } from "./query";
+import React, { useState } from 'react';
+import TestResultTable from './TestResultTable';
+import { getSummary } from './query';
 
-// import { DataGrid } from "@mui/x-data-grid";
+const App = () => {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-function App() {
+  const handleGetSummary = async () => {
+    try {
+      const summaryText = await getSummary();
+      setSummary(summaryText);
+      setError(null);
+    } catch (err) {
+      setSummary(null);
+      setError('Failed to fetch summary. Please try again.');
+    }
+  };
+
   return (
-    <>
-      <h1>Your data table goes here. </h1>
-      <p>The MUI DataGrid component has been installed for you.</p>
-    </>
+    <div>
+      <h1>Test Results</h1>
+      {summary && (
+        <div>
+          <h2>Summary of Common Errors:</h2>
+          <p>{summary}</p>
+        </div>
+      )}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      <TestResultTable />
+    </div>
   );
-}
+};
 
 export default App;

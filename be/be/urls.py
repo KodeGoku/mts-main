@@ -18,9 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from core.views import test_results
+from core.views import test_results, add_feedback, summarize
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("test_results/", test_results, name="test_results"),
+    path('add_feedback/', add_feedback, name='add_feedback'),
+    path('summarize/', summarize, name='summarize'),
 ]
