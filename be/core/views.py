@@ -9,6 +9,7 @@ import logging
 from django.conf import settings
 import google.generativeai as genai
 from django.core.paginator import Paginator
+from django.db.models import Q
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
@@ -18,19 +19,25 @@ logger = logging.getLogger(__name__)
 @csrf_exempt
 def test_results(request):
     """
-    View to return a paginated list of test results
+    View to return a paginated list of test results with optional keyword filtering
     """
     try:
         # Get offset and limit from query parameters
         offset = int(request.GET.get('offset', 0))
         limit = int(request.GET.get('limit', 10))
+        keyword = request.GET.get('keyword', '').strip()
 
         # Ensure offset and limit are non-negative
         if offset < 0 or limit <= 0:
             return JsonResponse({'error': 'Invalid offset or limit'}, status=400)
 
-        # Fetch the test results
-        test_results = TestResult.objects.all().values(
+        # Build the query
+        query = Q()
+        if keyword:
+            query &= Q(input_under_test__icontains=keyword) | Q(llm_output__icontains=keyword)
+
+        # Fetch the test results with optional keyword filtering
+        test_results = TestResult.objects.filter(query).values(
             'id', 'input_under_test', 'llm_output', 'criteria', 'auto_eval', 'auto_feedback', 'human_eval', 'human_feedback'
         )
 
@@ -43,7 +50,6 @@ def test_results(request):
             'results': list(page.object_list),
             'total_count': paginator.count,
         }, safe=False)
-    
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 

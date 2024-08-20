@@ -1,6 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { getTestResults, getSummary } from './query';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, FormControlLabel, Switch, CircularProgress, Pagination } from '@mui/material';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  FormControlLabel,
+  Switch,
+  CircularProgress,
+  Pagination,
+  TextField,
+} from '@mui/material';
 import FeedbackForm from './FeedbackForm';
 
 type TestResult = {
@@ -21,19 +35,19 @@ const TestResultTable: React.FC = () => {
   const [selectedTestResult, setSelectedTestResult] = useState<TestResult | null>(null);
   const [formOpen, setFormOpen] = useState<boolean>(false);
   const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
-  const [loadingSummary, setLoadingSummary] = useState<boolean>(false); // New state for summary loading
-  const [summary, setSummary] = useState<string | null>(null); // State for storing summary
+  const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
+  const [summary, setSummary] = useState<string | null>(null);
 
-  // Pagination state
   const [page, setPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const resultsPerPage = 10; // Number of results per page
+  const resultsPerPage = 10;
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const offset = (page - 1) * resultsPerPage;
-        const results = await getTestResults(offset, resultsPerPage);
+        const results = await getTestResults(offset, resultsPerPage, searchQuery);
         setTestResults(results.results);
         setTotalCount(results.total_count);
       } catch (error) {
@@ -44,7 +58,7 @@ const TestResultTable: React.FC = () => {
     };
 
     fetchData();
-  }, [page]);
+  }, [page, searchQuery]);
 
   const handleOpenForm = (result: TestResult) => {
     setSelectedTestResult(result);
@@ -60,7 +74,7 @@ const TestResultTable: React.FC = () => {
     const fetchData = async () => {
       try {
         const offset = (page - 1) * resultsPerPage;
-        const results = await getTestResults(offset, resultsPerPage);
+        const results = await getTestResults(offset, resultsPerPage, searchQuery);
         setTestResults(results.results);
         setTotalCount(results.total_count);
       } catch (error) {
@@ -75,9 +89,9 @@ const TestResultTable: React.FC = () => {
     setFilterEnabled(event.target.checked);
   };
 
-  const filteredResults = filterEnabled
-    ? testResults.filter(result => result.human_eval !== parseFloat(result.auto_eval))
-    : testResults;
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
 
   const handleGetSummary = async () => {
     setLoadingSummary(true);
@@ -104,10 +118,21 @@ const TestResultTable: React.FC = () => {
       ) : (
         summary && <div>{summary}</div>
       )}
-      <FormControlLabel
-        control={<Switch checked={filterEnabled} onChange={handleFilterChange} />}
-        label="Show only mismatched evaluations"
-      />
+      <div style={{ margin: '20px 0' }}>
+        <TextField
+          label="Search"
+          variant="outlined"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search word to filter the results"
+          fullWidth
+          style={{ marginBottom: '20px' }}
+        />
+        <FormControlLabel
+          control={<Switch checked={filterEnabled} onChange={handleFilterChange} />}
+          label="Show only mismatched evaluations"
+        />
+      </div>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -123,20 +148,22 @@ const TestResultTable: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredResults.map((result) => (
-              <TableRow key={result.id}>
-                <TableCell>{result.input_under_test}</TableCell>
-                <TableCell>{result.llm_output}</TableCell>
-                <TableCell>{result.criteria}</TableCell>
-                <TableCell>{result.auto_eval}</TableCell>
-                <TableCell>{result.auto_feedback}</TableCell>
-                <TableCell>{result.human_eval ?? 'N/A'}</TableCell>
-                <TableCell>{result.human_feedback || 'N/A'}</TableCell>
-                <TableCell>
-                  <Button onClick={() => handleOpenForm(result)}>Add Feedback</Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {testResults
+              .filter(result => !filterEnabled || result.human_eval !== parseFloat(result.auto_eval.toString()))
+              .map((result) => (
+                <TableRow key={result.id}>
+                  <TableCell>{result.input_under_test}</TableCell>
+                  <TableCell>{result.llm_output}</TableCell>
+                  <TableCell>{result.criteria}</TableCell>
+                  <TableCell>{result.auto_eval}</TableCell>
+                  <TableCell>{result.auto_feedback}</TableCell>
+                  <TableCell>{result.human_eval ?? 'N/A'}</TableCell>
+                  <TableCell>{result.human_feedback || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Button onClick={() => handleOpenForm(result)}>Add Feedback</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </TableContainer>

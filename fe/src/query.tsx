@@ -16,12 +16,17 @@ type GetTestResultsResponse = {
   total_count: number;
 };
 
-export async function getTestResults(offset: number = 0, limit: number = 10): Promise<GetTestResultsResponse> {
+export async function getTestResults(offset: number = 0, limit: number = 10, keyword?: string): Promise<GetTestResultsResponse> {
+  let queryParams = `offset=${offset}&limit=${limit}`;
+  if (keyword) {
+    queryParams += `&keyword=${encodeURIComponent(keyword)}`;
+  }
+
   let requestOptions = {
     method: "GET",
   };
   let response = await fetch(
-    `${BACKEND_ENDPOINT}/test_results/?offset=${offset}&limit=${limit}`,
+    `${BACKEND_ENDPOINT}/test_results/?${queryParams}`,
     requestOptions
   );
   if (response.status !== 200) {
