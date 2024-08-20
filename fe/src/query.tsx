@@ -1,6 +1,7 @@
-import { BACKEND_ENDPOINT } from './constants';
+import { BACKEND_ENDPOINT } from "./constants";
 
 type TestResult = {
+  id: string;
   input_under_test: string;
   llm_output: string;
   criteria: string;
@@ -8,9 +9,9 @@ type TestResult = {
   auto_feedback: string;
 };
 
-export async function getTestResults() {
+export async function getTestResults(): Promise<TestResult[]> {
   let requestOptions = {
-    method: 'POST',
+    method: "POST",
   };
   let response = await fetch(
     `${BACKEND_ENDPOINT}/test_results/`,
@@ -18,7 +19,7 @@ export async function getTestResults() {
   );
   if (response.status !== 200) {
     let text = await response.text();
-    throw Error(text);
+    throw new Error(text);
   }
   let response_json = await response.json();
   return response_json as TestResult[];
